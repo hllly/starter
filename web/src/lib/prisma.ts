@@ -13,7 +13,8 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient(): PrismaClient {
   if (DB_ADAPTER === "pg") {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
-    return new PrismaClient({ adapter: new PrismaPg(pool) });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new PrismaClient({ adapter: new PrismaPg(pool as any) });
   }
 
   const adapter = new PrismaNeon(
@@ -34,13 +35,13 @@ if (DB_ADAPTER === "neon" && !globalForPrisma.neonErrorHandlerRegistered) {
   process.on("uncaughtException", (err) => {
     const isNeonEvent =
       err != null &&
-      typeof (err as Record<string, unknown>).type === "string" &&
+      typeof (err as unknown as Record<string, unknown>).type === "string" &&
       !(err instanceof Error);
 
     if (isNeonEvent) {
       console.warn(
         "[neon-ws] WebSocket error event absorbed:",
-        (err as Record<string, unknown>).type,
+        (err as unknown as Record<string, unknown>).type,
       );
       return;
     }
