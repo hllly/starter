@@ -15,8 +15,6 @@ Workflow integration:
   After the run, it re-reads company_profile.tsv to get the new data.
 """
 
-from __future__ import annotations
-
 import argparse
 import csv
 import os
@@ -30,7 +28,7 @@ from workspace import OPENCLAW_ROOT, WORKFLOW_DIR, user_workspace, user_profile_
 COMPANY_WORKFLOW_CONTROLLER = str(WORKFLOW_DIR / "company_workflow_controller.py")
 
 
-def _parse_profile_tsv(domain: str, tsv_path: str | None = None) -> dict | None:
+def _parse_profile_tsv(domain, tsv_path=None):
     """Find a company profile by root_domain in company_profile.tsv."""
     path = tsv_path or str(OPENCLAW_ROOT / "company_profile.tsv")
     if not os.path.exists(path):
@@ -44,7 +42,7 @@ def _parse_profile_tsv(domain: str, tsv_path: str | None = None) -> dict | None:
     return None
 
 
-def _tsv_row_to_profile_data(row: dict) -> dict:
+def _tsv_row_to_profile_data(row):
     """Convert a TSV row into the API profile payload format."""
     return {
         "root_domain": row.get("root_domain"),
@@ -86,7 +84,7 @@ def _tsv_row_to_profile_data(row: dict) -> dict:
     }
 
 
-def cmd_list(status: str = "queued") -> None:
+def cmd_list(status="queued"):
     """List profile requests by status."""
     requests = api.list_profile_requests(status)
     if not requests:
@@ -101,7 +99,7 @@ def cmd_list(status: str = "queued") -> None:
         print(f"      请求时间: {r['requestedAt']}")
 
 
-def _run_openclaw_profile(domain: str, company_name: str, category: str = "", region: str = "", workspace: str | None = None) -> bool:
+def _run_openclaw_profile(domain, company_name, category="", region="", workspace=None):
     """
     Invoke the real OpenClaw company profile workflow for a single domain.
     Returns True if the run completed (profile may or may not have data).
@@ -144,7 +142,7 @@ def _run_openclaw_profile(domain: str, company_name: str, category: str = "", re
         return False
 
 
-def cmd_process(request_id: str | None = None, auto: bool = False) -> bool:
+def cmd_process(request_id=None, auto=False):
     """
     Process a profile request.
     Returns True on success, False on failure/skip.
@@ -299,7 +297,7 @@ def cmd_process(request_id: str | None = None, auto: bool = False) -> bool:
     return True
 
 
-def cmd_auto_all() -> None:
+def cmd_auto_all():
     """Process ALL queued profile requests automatically."""
     requests_list = api.list_profile_requests("queued")
     if not requests_list:

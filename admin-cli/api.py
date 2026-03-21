@@ -6,11 +6,11 @@ import requests
 from config import API_BASE_URL, HEADERS
 
 
-def _url(path: str) -> str:
+def _url(path):
     return f"{API_BASE_URL}{path}"
 
 
-def _check(resp: requests.Response) -> dict:
+def _check(resp):
     if resp.status_code >= 400:
         print(f"  ✗ HTTP {resp.status_code}: {resp.text}", file=sys.stderr)
         resp.raise_for_status()
@@ -19,81 +19,81 @@ def _check(resp: requests.Response) -> dict:
 
 # ── Jobs ──────────────────────────────────────────────
 
-def list_jobs(status: str) -> list[dict]:
+def list_jobs(status):
     return _check(requests.get(_url(f"/api/admin/jobs?status={status}"), headers=HEADERS))["data"]
 
 
-def get_payload(job_id: str) -> dict:
+def get_payload(job_id):
     return _check(requests.get(_url(f"/api/admin/jobs/{job_id}/payload"), headers=HEADERS))
 
 
-def claim(job_id: str, claimed_by: str = "admin") -> dict:
+def claim(job_id, claimed_by="admin"):
     return _check(requests.post(_url(f"/api/admin/jobs/{job_id}/claim"), headers=HEADERS,
                                 json={"claimedBy": claimed_by}))
 
 
-def start(job_id: str) -> dict:
+def start(job_id):
     return _check(requests.post(_url(f"/api/admin/jobs/{job_id}/start"), headers=HEADERS))
 
 
-def fail(job_id: str, failure_type: str = "execution_error", error_summary: str = "") -> dict:
+def fail(job_id, failure_type="execution_error", error_summary=""):
     return _check(requests.post(_url(f"/api/admin/jobs/{job_id}/fail"), headers=HEADERS,
                                 json={"failureType": failure_type, "errorSummary": error_summary}))
 
 
-def cancel(job_id: str) -> dict:
+def cancel(job_id):
     return _check(requests.post(_url(f"/api/admin/jobs/{job_id}/cancel"), headers=HEADERS))
 
 
 # ── Review ────────────────────────────────────────────
 
-def review_ready(job_id: str, payload: dict) -> dict:
+def review_ready(job_id, payload):
     return _check(requests.post(_url(f"/api/admin/jobs/{job_id}/review-ready"), headers=HEADERS,
                                 json=payload))
 
 
-def get_review(job_id: str) -> dict:
+def get_review(job_id):
     return _check(requests.get(_url(f"/api/admin/jobs/{job_id}/review"), headers=HEADERS))
 
 
-def publish(job_id: str) -> dict:
+def publish(job_id):
     return _check(requests.post(_url(f"/api/admin/jobs/{job_id}/publish"), headers=HEADERS))
 
 
-def reject(job_id: str, failure_type: str = "quality_rejected", review_note: str = "") -> dict:
+def reject(job_id, failure_type="quality_rejected", review_note=""):
     return _check(requests.post(_url(f"/api/admin/jobs/{job_id}/reject"), headers=HEADERS,
                                 json={"failureType": failure_type, "reviewNote": review_note}))
 
 
 # ── Profile Requests ─────────────────────────────────
 
-def list_profile_requests(status: str = "queued") -> list[dict]:
+def list_profile_requests(status="queued"):
     return _check(requests.get(_url(f"/api/admin/profile-requests?status={status}"), headers=HEADERS))["data"]
 
 
-def get_profile_payload(request_id: str) -> dict:
+def get_profile_payload(request_id):
     return _check(requests.get(_url(f"/api/admin/profile-requests/{request_id}/payload"), headers=HEADERS))
 
 
-def claim_profile(request_id: str) -> dict:
+def claim_profile(request_id):
     return _check(requests.post(_url(f"/api/admin/profile-requests/{request_id}/claim"), headers=HEADERS))
 
 
-def start_profile(request_id: str) -> dict:
+def start_profile(request_id):
     return _check(requests.post(_url(f"/api/admin/profile-requests/{request_id}/start"), headers=HEADERS))
 
 
-def complete_profile(request_id: str, profile_data: dict, run_id: str = "") -> dict:
+def complete_profile(request_id, profile_data, run_id=""):
     return _check(requests.post(_url(f"/api/admin/profile-requests/{request_id}/complete"), headers=HEADERS,
                                 json={"profile": profile_data, "run_id": run_id}))
 
 
-def fail_profile(request_id: str, error_summary: str = "") -> dict:
+def fail_profile(request_id, error_summary=""):
     return _check(requests.post(_url(f"/api/admin/profile-requests/{request_id}/fail"), headers=HEADERS,
                                 json={"error_summary": error_summary}))
 
 
 # ── User Feedback ────────────────────────────────────
 
-def get_user_feedback_summary(phone: str) -> dict:
+def get_user_feedback_summary(phone):
     return _check(requests.get(_url(f"/api/admin/users/{phone}/feedback-summary"), headers=HEADERS))

@@ -13,7 +13,7 @@ _DEFAULTS = {
     },
 }
 
-def _get(key: str) -> str:
+def _get(key):
     return os.environ.get(key) or _DEFAULTS.get(ENV, _DEFAULTS["dev"]).get(key, "")
 
 API_BASE_URL = _get("API_BASE_URL")

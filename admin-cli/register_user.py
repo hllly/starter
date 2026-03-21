@@ -15,8 +15,6 @@
   python register_user.py 13912345678 --name 张三 --email zhangsan@example.com
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import os
@@ -26,7 +24,7 @@ import tempfile
 import uuid
 
 
-def _get_database_url() -> str:
+def _get_database_url():
     url = os.environ.get("DATABASE_URL")
     if url:
         return url
@@ -76,7 +74,7 @@ main().catch(e => {{ console.error('ERROR:', e.message); process.exit(1); }});
 """
 
 
-def register(phone: str, name=None, email=None) -> dict:
+def register(phone, name=None, email=None):
     db_url = _get_database_url()
 
     # Locate pg module inside web/node_modules

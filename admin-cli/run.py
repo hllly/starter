@@ -12,8 +12,6 @@ Usage:
   python run.py <job_id> --tsv <path>        # Load from TSV file
 """
 
-from __future__ import annotations
-
 import argparse
 import sys
 import json
@@ -24,7 +22,7 @@ import review as review_cli
 from execute import execute_and_build_payload
 
 
-def _pick_source_interactive() -> str:
+def _pick_source_interactive():
     """Let the user pick execution source interactively."""
     print("\n  执行方式:")
     print("  [1] mock  — 使用模拟数据（测试用）")
@@ -57,7 +55,7 @@ def _pick_source_interactive() -> str:
         return "mock"
 
 
-def run(job_id: str | None = None, source: str | None = None) -> None:
+def run(job_id=None, source=None):
     # ── Step 1: Pick & claim ──────────────────────────
     if not job_id:
         queued = api.list_jobs("queued")

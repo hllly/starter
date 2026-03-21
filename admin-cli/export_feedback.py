@@ -7,7 +7,7 @@ import api
 from workspace import user_workspace
 
 
-def export_feedback_snapshot(phone: str) -> Path | None:
+def export_feedback_snapshot(phone):
     """Query DB via admin API and write feedback_snapshot.json to user workspace."""
     ws = user_workspace(phone)
 

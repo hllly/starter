@@ -12,8 +12,6 @@ Cold-start (bootstrap) flow:
   Reads new outputs: platform_results.json, company_candidates.tsv
 """
 
-from __future__ import annotations
-
 import csv
 import json
 import os
@@ -50,7 +48,7 @@ VALID_BUYER_TYPES = {
 }
 
 
-def _host_from_url(url: str) -> str:
+def _host_from_url(url):
     """Extract bare hostname from a URL, stripping www. prefix."""
     if not url:
         return ""
@@ -63,7 +61,7 @@ def _host_from_url(url: str) -> str:
         return ""
 
 
-def _resolve_company_website(domain_guess: str, best_entry_url: str, source_platform: str) -> str:
+def _resolve_company_website(domain_guess, best_entry_url, source_platform):
     """Return a real company website URL, filtering out platform page URLs.
 
     Priority: domain_guess > best_entry_url (only if not a platform page).
@@ -81,23 +79,23 @@ def _resolve_company_website(domain_guess: str, best_entry_url: str, source_plat
     return ""
 
 
-def _map_source_type(raw: str) -> str:
+def _map_source_type(raw):
     if raw in VALID_SOURCE_TYPES:
         return raw
     return SOURCE_TYPE_MAP.get(raw, "other")
 
 
-def _map_buyer_type(raw: str) -> str:
+def _map_buyer_type(raw):
     if raw in VALID_BUYER_TYPES:
         return raw
     return "unknown"
 
 
-def _region_to_zh(code: str) -> str:
+def _region_to_zh(code):
     return REGION_MAP_REV.get(code, code)
 
 
-def _region_to_code(zh: str) -> str:
+def _region_to_code(zh):
     return REGION_MAP.get(zh, zh)
 
 
@@ -108,7 +106,7 @@ _DRILLABLE_LIFECYCLE = {"tested", "active", "confirmed_value", "trial_drilled"}
 _DRILLABLE_VALIDATION = {"confirmed_value", "trial_drilled"}
 
 
-def _has_drillable_platforms(ws: Path) -> bool:
+def _has_drillable_platforms(ws):
     """Check if platform_master.tsv has at least one platform ready for drilldown."""
     pm_path = ws / "platform_master.tsv"
     rows = _read_tsv(pm_path)
@@ -125,7 +123,7 @@ _BOOTSTRAP_FIT_THRESHOLD = 0.55
 _BOOTSTRAP_FALLBACK_FIT = 0.35
 
 
-def _promote_bootstrap_platforms(ws: Path) -> int:
+def _promote_bootstrap_platforms(ws):
     """After bootstrap, promote qualifying platforms so company drilldown can use them.
 
     Promotion rules (aligned with workflow BOOTSTRAP_PARAMS_REDESIGN):
@@ -198,7 +196,7 @@ def _promote_bootstrap_platforms(ws: Path) -> int:
     return promoted
 
 
-def _is_cold_workspace(ws: Path) -> bool:
+def _is_cold_workspace(ws):
     """A workspace is cold if it has no drillable platforms and few runs."""
     if _has_drillable_platforms(ws):
         return False
@@ -211,16 +209,16 @@ def _is_cold_workspace(ws: Path) -> bool:
 # ── Payload builder ──────────────────────────────────
 
 def build_review_payload(
-    run_id: str,
-    summary_text: str,
-    leads_data: list[dict],
-    source_summary: str = "",
-) -> dict:
+    run_id,
+    summary_text,
+    leads_data,
+    source_summary="",
+):
     """Build the review-ready payload from structured lead data."""
     rec = sum(1 for l in leads_data if l.get("current_tier") == "recommended")
     obs = sum(1 for l in leads_data if l.get("current_tier") == "observation")
 
-    source_counts: dict[str, int] = {}
+    source_counts = {}
     for l in leads_data:
         st = l.get("source_type", "other")
         source_counts[st] = source_counts.get(st, 0) + 1
@@ -242,7 +240,7 @@ def build_review_payload(
 
 # ── Convert OpenClaw company_master rows to lead payload ─
 
-def _score_to_tier(score_str: str, status: str) -> str:
+def _score_to_tier(score_str, status):
     """Map company_master total_score / status to current_tier."""
     try:
         score = float(score_str) if score_str else 0
@@ -253,7 +251,7 @@ def _score_to_tier(score_str: str, status: str) -> str:
     return "observation"
 
 
-def _status_to_action(status: str) -> str:
+def _status_to_action(status):
     if status in ("pass", "in_main_pool"):
         return "contact_now"
     if status == "review":
@@ -261,7 +259,7 @@ def _status_to_action(status: str) -> str:
     return "observe"
 
 
-def convert_company_master_rows(rows: list[dict], target_category: str, target_region: str) -> list[dict]:
+def convert_company_master_rows(rows, target_category, target_region):
     """Convert company_master.tsv rows to review-ready lead format."""
     leads = []
     region_code = _region_to_code(target_region) if target_region in REGION_MAP else target_region
@@ -276,7 +274,7 @@ def convert_company_master_rows(rows: list[dict], target_category: str, target_r
         score = row.get("total_score", "")
         region = row.get("region_hint", "") or region_code
 
-        lead: dict = {
+        lead = {
             "company_name": name,
             "country_region": region,
             "buyer_type": "unknown",
@@ -294,7 +292,7 @@ def convert_company_master_rows(rows: list[dict], target_category: str, target_r
     return leads
 
 
-def convert_review_queue_rows(rows: list[dict], target_category: str, target_region: str) -> list[dict]:
+def convert_review_queue_rows(rows, target_category, target_region):
     """Convert review_queue.tsv rows to review-ready lead format."""
     leads = []
     region_code = _region_to_code(target_region) if target_region in REGION_MAP else target_region
@@ -305,7 +303,7 @@ def convert_review_queue_rows(rows: list[dict], target_category: str, target_reg
         source_url = row.get("source_url", "")
         reason = row.get("queue_reason", "from_platform_drilldown")
 
-        lead: dict = {
+        lead = {
             "company_name": name,
             "country_region": region_code,
             "buyer_type": "unknown",
@@ -325,7 +323,7 @@ def convert_review_queue_rows(rows: list[dict], target_category: str, target_reg
 
 # ── Read TSV helper ──────────────────────────────────
 
-def _read_tsv(path: str | Path) -> list[dict]:
+def _read_tsv(path):
     p = Path(path)
     if not p.exists():
         return []
@@ -336,8 +334,8 @@ def _read_tsv(path: str | Path) -> list[dict]:
 # ── Real workflow execution ──────────────────────────
 
 
-def _run_platform(ws: str, wf: str, mode: str, category: str, region: str,
-                  run_id: str | None) -> int:
+def _run_platform(ws, wf, mode, category, region,
+                  run_id):
     """Run platform_workflow_controller.py with the given mode. Returns exit code."""
     p_cmd = [
         sys.executable, str(WORKFLOW_DIR / "platform_workflow_controller.py"),
@@ -358,13 +356,13 @@ def _run_platform(ws: str, wf: str, mode: str, category: str, region: str,
 
 
 def run_openclaw_workflow(
-    target_category: str,
-    target_region_zh: str,
-    run_id: str | None = None,
-    mode: str = "auto",
-    skip_platform: bool = False,
-    workspace: Path | None = None,
-) -> tuple[str, dict]:
+    target_category,
+    target_region_zh,
+    run_id=None,
+    mode="auto",
+    skip_platform=False,
+    workspace=None,
+):
     """Run the full OpenClaw workflow (platform → company) and return (run_id, summary)."""
     ws = str(workspace or OPENCLAW_ROOT)
     wf = str(WORKFLOW_DIR)
@@ -442,7 +440,7 @@ def run_openclaw_workflow(
 
 # ── From existing run ────────────────────────────────
 
-def convert_company_candidates_rows(rows: list[dict], target_category: str, target_region: str) -> list[dict]:
+def convert_company_candidates_rows(rows, target_category, target_region):
     """Convert company_candidates.tsv rows (new workflow output) to review-ready lead format.
 
     Handles both 'candidate' and 'verified' evidence levels.
@@ -479,7 +477,7 @@ def convert_company_candidates_rows(rows: list[dict], target_category: str, targ
             tier = "recommended"
             action = "contact_if_fit"
 
-        lead: dict = {
+        lead = {
             "company_name": name,
             "country_region": row.get("region_hint", "") or region_code,
             "buyer_type": "unknown",
@@ -499,7 +497,7 @@ def convert_company_candidates_rows(rows: list[dict], target_category: str, targ
     return leads
 
 
-def load_platform_results(ws: Path, run_id: str) -> dict | None:
+def load_platform_results(ws, run_id):
     """Read platform_results.json from the platform run directory."""
     for suffix in ("_platform", ""):
         p = ws / "runs" / f"{run_id}{suffix}" / "platform_results.json"
@@ -508,7 +506,7 @@ def load_platform_results(ws: Path, run_id: str) -> dict | None:
     return None
 
 
-def load_from_run(run_id: str, target_category: str, target_region: str, workspace: Path | None = None) -> list[dict]:
+def load_from_run(run_id, target_category, target_region, workspace=None):
     """Load companies from a run, preferring new outputs over legacy.
 
     Priority:
@@ -556,7 +554,7 @@ def load_from_run(run_id: str, target_category: str, target_region: str, workspa
 
 # ── From new companies in company_master (batch) ─────
 
-def load_new_companies(target_category: str, target_region: str, limit: int = 50, workspace: Path | None = None) -> list[dict]:
+def load_new_companies(target_category, target_region, limit=50, workspace=None):
     """Load companies with status=new from company_master as leads."""
     ws = workspace or OPENCLAW_ROOT
     cm_rows = _read_tsv(ws / "company_master.tsv")
@@ -567,7 +565,7 @@ def load_new_companies(target_category: str, target_region: str, limit: int = 50
 
 # ── Mock (kept for testing) ──────────────────────────
 
-def mock_execute(payload: dict) -> list[dict]:
+def mock_execute(payload):
     category = payload["request"]["productCategory"]
     regions = payload["request"]["targetRegions"]
     buyer_types = payload["request"]["buyerTypes"]
@@ -603,9 +601,9 @@ def mock_execute(payload: dict) -> list[dict]:
 
 # ── Main orchestration ───────────────────────────────
 
-def _collect_quality_meta(ws: Path | None, run_id: str, summary: dict | None = None) -> dict:
+def _collect_quality_meta(ws, run_id, summary=None):
     """Read quality metrics from platform_results.json + company_drilldown_summary.json + bootstrap_scores.json."""
-    qm: dict = {}
+    qm = {}
     if not ws:
         return qm
 
@@ -673,7 +671,7 @@ def _collect_quality_meta(ws: Path | None, run_id: str, summary: dict | None = N
     return qm
 
 
-def _resolve_workspace(job_payload: dict) -> Path | None:
+def _resolve_workspace(job_payload):
     """Extract userPhone from payload and return the user's workspace, or None for shared."""
     phone = job_payload.get("userPhone")
     if phone:
@@ -692,10 +690,10 @@ def _resolve_workspace(job_payload: dict) -> Path | None:
 
 
 def execute_and_build_payload(
-    job_payload: dict,
-    run_id: str,
-    source: str | None = None,
-) -> dict:
+    job_payload,
+    run_id,
+    source=None,
+):
     """
     Execute workflow and build review-ready payload.
 
@@ -710,7 +708,7 @@ def execute_and_build_payload(
     regions = job_payload["request"].get("targetRegions", [])
     region = regions[0] if regions else "US"
     ws = _resolve_workspace(job_payload)
-    quality_meta: dict = {}
+    quality_meta = {}
 
     if source and source.startswith("run:"):
         existing_run_id = source.split(":", 1)[1]

@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Interactive job management CLI."""
 
-from __future__ import annotations
-
 import sys
 import json
 import api
 
 
-def _print_jobs(jobs: list[dict]) -> None:
+def _print_jobs(jobs):
     if not jobs:
         print("  （空）")
         return
@@ -18,7 +16,7 @@ def _print_jobs(jobs: list[dict]) -> None:
               f"地区={req.get('targetRegions', [])}  用户={req.get('userName', '?')}")
 
 
-def cmd_list(status: str = "queued") -> None:
+def cmd_list(status="queued"):
     """列出指定状态的任务。"""
     jobs = api.list_jobs(status)
     print(f"\n── {status} 任务 ({len(jobs)}) ──")
@@ -26,7 +24,7 @@ def cmd_list(status: str = "queued") -> None:
     return jobs
 
 
-def cmd_claim(job_id: str | None = None) -> dict | None:
+def cmd_claim(job_id=None):
     """领取任务。若 job_id 为空，显示列表让用户选择。"""
     if not job_id:
         jobs = api.list_jobs("queued")
@@ -46,28 +44,28 @@ def cmd_claim(job_id: str | None = None) -> dict | None:
     return result
 
 
-def cmd_start(job_id: str) -> dict:
+def cmd_start(job_id):
     """开始执行。"""
     result = api.start(job_id)
     print(f"  ✓ 已开始: {result['id'][:8]}…  status={result['status']}")
     return result
 
 
-def cmd_fail(job_id: str, reason: str = "") -> dict:
+def cmd_fail(job_id, reason=""):
     """标记失败。"""
     result = api.fail(job_id, error_summary=reason)
     print(f"  ✓ 已失败: {result['id'][:8]}…  status={result['status']}")
     return result
 
 
-def cmd_cancel(job_id: str) -> dict:
+def cmd_cancel(job_id):
     """取消任务。"""
     result = api.cancel(job_id)
     print(f"  ✓ 已取消: {result['id'][:8]}…  status={result['status']}")
     return result
 
 
-def cmd_payload(job_id: str) -> dict:
+def cmd_payload(job_id):
     """拉取任务执行参数。"""
     data = api.get_payload(job_id)
     print(f"\n── Job Payload ──")

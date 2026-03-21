@@ -27,10 +27,10 @@ OPENCLAW_ROOT = Path(os.environ.get(
 WORKFLOW_DIR = OPENCLAW_ROOT / "workflow"
 
 # Sentinel to avoid re-initializing on every call within a single process
-_initialized_users: set[str] = set()
+_initialized_users = set()
 
 # TSV files that need a proper header row (empty content, but with schema)
-_TSV_HEADERS: dict[str, str] = {
+_TSV_HEADERS = {
     "company_master.tsv": (
         "root_domain\tcompany_name_best\tbest_entry_url\tsource_type\tsource_platform_domain\t"
         "region_hint\tcategory_hint\tfirst_seen_at\tlast_seen_at\tlast_verified_at\t"
@@ -94,7 +94,7 @@ _PLATFORM_MASTER_HEADER = (
 )
 
 
-def _init_workspace(ws: Path, phone: str) -> None:
+def _init_workspace(ws, phone):
     """Initialize a new user workspace with required files.
 
     Each user gets a completely clean workspace — no data copied from
@@ -156,7 +156,7 @@ _GENERIC_BUYER_ANGLE_BUCKETS = [
     "vendor onboarding", "sourcing", "procurement", "trade buyer",
 ]
 
-_CATEGORY_SUB_BUCKETS: dict[str, list[str]] = {
+_CATEGORY_SUB_BUCKETS = {
     "宠物用品": [
         "pet grooming", "pet toys", "pet treats", "pet apparel",
         "pet bedding", "pet travel", "pet food", "pet health supplements",
@@ -192,7 +192,7 @@ _CATEGORY_SUB_BUCKETS: dict[str, list[str]] = {
 }
 
 # Fallback: generate generic sub-buckets from the category name
-def _generate_sub_buckets(category: str) -> list[str]:
+def _generate_sub_buckets(category):
     if category in _CATEGORY_SUB_BUCKETS:
         return _CATEGORY_SUB_BUCKETS[category]
     return [
@@ -202,7 +202,7 @@ def _generate_sub_buckets(category: str) -> list[str]:
     ]
 
 
-def ensure_bucket_registry(phone: str, target_category: str, target_region: str) -> None:
+def ensure_bucket_registry(phone, target_category, target_region):
     """Generate or update the platform_bucket_registry.json for a user's workspace.
 
     Called before executing an OpenClaw workflow to ensure proper bucket
@@ -240,7 +240,7 @@ def ensure_bucket_registry(phone: str, target_category: str, target_region: str)
     print(f"  [workspace] 生成 bucket 注册表: category={target_category} region={target_region}")
 
 
-def user_workspace(phone: str) -> Path:
+def user_workspace(phone):
     """Return the isolated workspace for a given user (by phone).
     Automatically initializes the workspace on first access."""
     ws = OPENCLAW_ROOT / "users" / phone
@@ -249,13 +249,13 @@ def user_workspace(phone: str) -> Path:
     return ws
 
 
-def user_profile_tsv(phone: str) -> Path:
+def user_profile_tsv(phone):
     return user_workspace(phone) / "company_profile.tsv"
 
 
-def user_company_master_tsv(phone: str) -> Path:
+def user_company_master_tsv(phone):
     return user_workspace(phone) / "company_master.tsv"
 
 
-def user_review_queue_tsv(phone: str) -> Path:
+def user_review_queue_tsv(phone):
     return user_workspace(phone) / "review_queue.tsv"

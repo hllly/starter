@@ -6,7 +6,7 @@ import json
 import api
 
 
-def cmd_review_ready(job_id: str, payload_file: str) -> dict:
+def cmd_review_ready(job_id, payload_file):
     """回传执行结果。payload_file 为 JSON 文件路径。"""
     with open(payload_file) as f:
         payload = json.load(f)
@@ -16,7 +16,7 @@ def cmd_review_ready(job_id: str, payload_file: str) -> dict:
     return result
 
 
-def cmd_review(job_id: str) -> dict:
+def cmd_review(job_id):
     """查看审核详情。"""
     data = api.get_review(job_id)
     job = data["job"]
@@ -37,14 +37,14 @@ def cmd_review(job_id: str) -> dict:
     return data
 
 
-def cmd_publish(job_id: str) -> dict:
+def cmd_publish(job_id):
     """发布。"""
     result = api.publish(job_id)
     print(f"  ✓ 已发布: status={result['status']}  publishedAt={result.get('publishedAt')}")
     return result
 
 
-def cmd_reject(job_id: str, note: str = "") -> dict:
+def cmd_reject(job_id, note=""):
     """拒绝。"""
     result = api.reject(job_id, review_note=note)
     print(f"  ✓ 已拒绝: status={result['status']}  failureType={result.get('failureType')}")
