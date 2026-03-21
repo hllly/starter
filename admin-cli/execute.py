@@ -56,7 +56,7 @@ def _host_from_url(url):
         from urllib.parse import urlparse
         u = url if "://" in url else f"https://{url}"
         h = urlparse(u).hostname or ""
-        return h.removeprefix("www.").lower()
+        return h[4:].lower() if h.startswith("www.") else h.lower()
     except Exception:
         return ""
 
@@ -66,7 +66,7 @@ def _resolve_company_website(domain_guess, best_entry_url, source_platform):
 
     Priority: domain_guess > best_entry_url (only if not a platform page).
     """
-    platform_host = source_platform.removeprefix("www.").lower() if source_platform else ""
+    platform_host = (source_platform[4:] if source_platform.startswith("www.") else source_platform).lower() if source_platform else ""
 
     if domain_guess and domain_guess != platform_host:
         return f"https://{domain_guess}"
@@ -345,11 +345,11 @@ def _run_platform(ws, wf, mode, category, region,
     ]
     if run_id:
         p_cmd += ["--run-id", run_id]
-    result = subprocess.run(p_cmd, cwd=wf, capture_output=True, text=True)
+    result = subprocess.run(p_cmd, cwd=wf, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     if result.returncode != 0:
-        print(f"  ⚠ 平台 {mode} 异常 (exit={result.returncode})")
+        print("  ⚠ 平台 {} 异常 (exit={})".format(mode, result.returncode))
         if result.stderr:
-            print(f"    {result.stderr[:400]}")
+            print("    {}".format(result.stderr[:400]))
     else:
         print(f"  ✓ 平台 {mode} 完成")
     return result.returncode
@@ -412,10 +412,10 @@ def run_openclaw_workflow(
     ]
     if run_id:
         c_cmd += ["--run-id", run_id]
-    result = subprocess.run(c_cmd, cwd=wf, capture_output=True, text=True)
+    result = subprocess.run(c_cmd, cwd=wf, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
     if result.returncode != 0:
-        raise RuntimeError(f"公司下钻失败 (exit={result.returncode}): {result.stderr[:500]}")
+        raise RuntimeError("公司下钻失败 (exit={}): {}".format(result.returncode, result.stderr[:500]))
 
     print(f"  ✓ 公司下钻完成")
 

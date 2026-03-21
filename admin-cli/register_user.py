@@ -100,7 +100,7 @@ def register(phone, name=None, email=None):
         env["REG_EMAIL"] = email or ""
         env["REG_ID"] = user_id
 
-        result = subprocess.run(["node", tmp], capture_output=True, text=True, env=env, timeout=30)
+        result = subprocess.run(["node", tmp], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, env=env, timeout=30)
     finally:
         os.unlink(tmp)
 
