@@ -1,5 +1,4 @@
 import "dotenv/config";
-import path from "node:path";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
@@ -9,8 +8,5 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
-  },
-  seed: {
-    command: `npx tsx ${path.join("prisma", "seed.ts")}`,
   },
 });
