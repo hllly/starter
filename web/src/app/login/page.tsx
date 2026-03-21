@@ -35,12 +35,7 @@ export default function LoginPage() {
           setError(data.error || "登录失败，请检查手机号");
           return;
         }
-        const data = await res.json();
-        if (data.user?.onboarded) {
-          router.push("/discover");
-        } else {
-          router.push("/onboarding");
-        }
+        router.push("/discover");
         router.refresh();
       } catch {
         setError("网络错误，请稍后重试");
