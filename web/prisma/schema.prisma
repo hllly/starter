@@ -1,0 +1,535 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// users
+// ============================================================
+
+enum UserStatus {
+  invited
+  active
+  disabled
+}
+
+model User {
+  id               String     @id @default(uuid()) @db.Uuid
+  phone            String     @unique
+  name             String?
+  email            String?
+  status           UserStatus @default(active)
+  onboardedAt      DateTime?  @map("onboarded_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  businessProfile   UserBusinessProfile?
+  discoveryRequests DiscoveryRequest[]
+  jobs              Job[]
+  leadFeedbacks     LeadFeedback[]
+  batchFeedbacks    BatchFeedback[]
+  poolItems         CustomerPoolItem[]
+  profileRequests   CompanyProfileRequest[]
+
+  @@map("users")
+}
+
+// ============================================================
+// user_business_profiles — onboarding 表单数据
+// ============================================================
+
+model UserBusinessProfile {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @unique @map("user_id") @db.Uuid
+  mainCategory         String   @map("main_category")
+  subCategories        String   @map("sub_categories")
+  targetRegions        Json     @map("target_regions")
+  targetBuyerTypes     Json     @map("target_buyer_types")
+  excludedBuyerTypes   Json?    @map("excluded_buyer_types")
+  productPositioning   String   @map("product_positioning")
+  targetCustomerDesc   String   @map("target_customer_desc")
+  websiteUrl           String?  @map("website_url")
+  coreSellingPoints    String?  @map("core_selling_points")
+  moqPriceRange        String?  @map("moq_price_range")
+  customerScalePref    String?  @map("customer_scale_pref")
+  exclusionConditions  String?  @map("exclusion_conditions")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_business_profiles")
+}
+
+// ============================================================
+// discovery_requests
+//
+// Job.status 是执行状态的 source of truth。
+// DiscoveryRequest.status 是用户视图的反规范化缓存。
+// 每次 Job 状态变更时，必须在同一事务中同步更新。
+// ============================================================
+
+model DiscoveryRequest {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  productCategory   String    @map("product_category")
+  targetRegions     Json      @map("target_regions")
+  buyerTypes        Json      @map("buyer_types")
+  priorityDirection String    @map("priority_direction")
+  advancedOptions   Json?     @map("advanced_options")
+  status            JobStatus @default(queued)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user           User            @relation(fields: [userId], references: [id])
+  jobs           Job[]
+  leads          Lead[]
+  batchFeedbacks BatchFeedback[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("discovery_requests")
+}
+
+// ============================================================
+// jobs
+// ============================================================
+
+enum JobStatus {
+  queued
+  claimed
+  running
+  awaiting_review
+  published
+  failed
+  cancelled
+}
+
+enum FailureType {
+  execution_error
+  quality_rejected
+  invalid_input
+}
+
+enum ReviewDecision {
+  approved
+  rejected
+}
+
+model Job {
+  id                 String          @id @default(uuid()) @db.Uuid
+  discoveryRequestId String          @map("discovery_request_id") @db.Uuid
+  userId             String?         @map("user_id") @db.Uuid
+  status             JobStatus       @default(queued)
+  claimedAt          DateTime?       @map("claimed_at")
+  claimedBy          String?         @map("claimed_by")
+  startedAt          DateTime?       @map("started_at")
+  reviewReadyAt      DateTime?       @map("review_ready_at")
+  publishedAt        DateTime?       @map("published_at")
+  reviewDecision     ReviewDecision? @map("review_decision")
+  reviewNote         String?         @map("review_note")
+  failureType        FailureType?    @map("failure_type")
+  errorSummary       String?         @map("error_summary")
+  runId              String?         @map("run_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  discoveryRequest DiscoveryRequest  @relation(fields: [discoveryRequestId], references: [id])
+  user             User?             @relation(fields: [userId], references: [id])
+  resultSummary    JobResultSummary?
+
+  @@index([discoveryRequestId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("jobs")
+}
+
+// ============================================================
+// job_result_summaries
+// ============================================================
+
+enum ResultQuality {
+  normal
+  low_yield
+  empty
+}
+
+model JobResultSummary {
+  id                String        @id @default(uuid()) @db.Uuid
+  jobId             String        @unique @map("job_id") @db.Uuid
+  summaryText       String?       @map("summary_text")
+  recommendedCount  Int           @default(0) @map("recommended_count")
+  observationCount  Int           @default(0) @map("observation_count")
+  sourceSummaryText String?       @map("source_summary_text")
+  sourceSummaryJson Json?         @map("source_summary_json")
+  resultQuality     ResultQuality @default(normal) @map("result_quality")
+  qualityMeta       Json?         @map("quality_meta")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@map("job_result_summaries")
+}
+
+// ============================================================
+// companies
+//
+// Partial unique indexes created via migration SQL:
+//   companies_website_unique: ON (website) WHERE website IS NOT NULL
+//   companies_name_region_unique: ON (normalized_name, country_region) WHERE website IS NULL
+// ============================================================
+
+model Company {
+  id             String   @id @default(uuid()) @db.Uuid
+  companyName    String   @map("company_name")
+  normalizedName String   @map("normalized_name")
+  website        String?
+  rootDomain     String?  @map("root_domain")
+  countryRegion  String?  @map("country_region")
+  linkedinUrl    String?  @map("linkedin_url")
+  contactEmail   String?  @map("contact_email")
+  contactPhone   String?  @map("contact_phone")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  leads           Lead[]
+  poolItems       CustomerPoolItem[]
+  profile         CompanyProfile?
+  profileRequests CompanyProfileRequest[]
+
+  @@index([website])
+  @@index([rootDomain])
+  @@index([normalizedName, countryRegion])
+  @@map("companies")
+}
+
+// ============================================================
+// leads
+// ============================================================
+
+enum LeadBuyerType {
+  importer
+  distributor
+  wholesaler
+  brand_sourcing
+  chain_retail_buyer
+  trading_company
+  unknown
+}
+
+enum LeadSourceType {
+  industry_directory
+  association
+  customs_data
+  marketplace
+  exhibitor_list
+  company_website
+  other
+}
+
+enum LeadTier {
+  recommended
+  observation
+}
+
+enum RecommendedAction {
+  contact_now
+  contact_if_fit
+  observe
+  contact_maybe
+  deprioritize
+}
+
+enum LeadStatus {
+  new
+  interested
+  dismissed
+  contacted
+  following
+  paused
+  no_interest
+}
+
+model Lead {
+  id                   String             @id @default(uuid()) @db.Uuid
+  discoveryRequestId   String             @map("discovery_request_id") @db.Uuid
+  companyId            String             @map("company_id") @db.Uuid
+  sourceType           LeadSourceType?    @map("source_type")
+  sourcePlatform       String?            @map("source_platform")
+  sourceUrl            String?            @map("source_url")
+  buyerType            LeadBuyerType?     @map("buyer_type")
+  currentTier          LeadTier           @map("current_tier")
+  recommendationReason String?            @map("recommendation_reason")
+  recommendedAction    RecommendedAction? @map("recommended_action")
+  status               LeadStatus         @default(new)
+  note                 String?
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  discoveryRequest DiscoveryRequest @relation(fields: [discoveryRequestId], references: [id])
+  company          Company          @relation(fields: [companyId], references: [id])
+  feedbacks        LeadFeedback[]
+
+  @@index([discoveryRequestId])
+  @@index([companyId])
+  @@index([status])
+  @@map("leads")
+}
+
+// ============================================================
+// lead_feedback
+// ============================================================
+
+enum FeedbackAction {
+  interested
+  not_fit
+  contacted
+}
+
+enum FeedbackReason {
+  type_mismatch
+  too_small
+  duplicate
+  info_insufficient
+  other
+}
+
+model LeadFeedback {
+  id        String          @id @default(uuid()) @db.Uuid
+  leadId    String          @map("lead_id") @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  action    FeedbackAction
+  reason    FeedbackReason?
+  note      String?
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  lead Lead @relation(fields: [leadId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@index([userId])
+  @@map("lead_feedback")
+}
+
+// ============================================================
+// batch_feedback
+// ============================================================
+
+enum Helpfulness {
+  helpful
+  neutral
+  not_helpful
+}
+
+model BatchFeedback {
+  id                 String       @id @default(uuid()) @db.Uuid
+  discoveryRequestId String       @map("discovery_request_id") @db.Uuid
+  userId             String       @map("user_id") @db.Uuid
+  helpfulness        Helpfulness
+  note               String?
+  createdAt          DateTime     @default(now()) @map("created_at")
+
+  discoveryRequest DiscoveryRequest @relation(fields: [discoveryRequestId], references: [id])
+  user             User             @relation(fields: [userId], references: [id])
+
+  @@index([discoveryRequestId])
+  @@index([userId])
+  @@map("batch_feedback")
+}
+
+// ============================================================
+// Customer Pool enums
+// ============================================================
+
+enum PoolStatus {
+  active
+  watching
+  following
+  archived
+  excluded
+}
+
+enum MatchLevel {
+  high
+  medium
+  low
+  unknown
+}
+
+enum ProfileStatus {
+  not_started
+  partial
+  complete
+  failed
+}
+
+enum ProfileQuality {
+  high
+  medium
+  low
+  unknown
+}
+
+enum ProfileRequestStatus {
+  queued
+  claimed
+  running
+  completed
+  pr_failed
+  cancelled
+}
+
+// ============================================================
+// customer_pool_items
+// ============================================================
+
+model CustomerPoolItem {
+  id                       String         @id @default(uuid()) @db.Uuid
+  userId                   String         @map("user_id") @db.Uuid
+  companyId                String         @map("company_id") @db.Uuid
+
+  poolStatus               PoolStatus     @default(active) @map("pool_status")
+  matchLevel               MatchLevel     @default(unknown) @map("match_level")
+  poolScore                Int?           @map("pool_score")
+
+  rootDomain               String?        @map("root_domain")
+  companyRole              String?        @map("company_role")
+  businessModel            String?        @map("business_model")
+  buyerFit                 String?        @map("buyer_fit")
+  buyerFitReason           String?        @map("buyer_fit_reason")
+
+  productCategoriesSummary String?        @map("product_categories_summary")
+  targetMarketsSummary     String?        @map("target_markets_summary")
+
+  firstSeenAt              DateTime?      @map("first_seen_at")
+  lastSeenAt               DateTime?      @map("last_seen_at")
+  appearCount              Int            @default(0) @map("appear_count")
+  sourceCount              Int            @default(0) @map("source_count")
+
+  latestLeadId             String?        @map("latest_lead_id") @db.Uuid
+  latestRequestId          String?        @map("latest_request_id") @db.Uuid
+  latestLeadStatus         String?        @map("latest_lead_status")
+
+  profileStatus            ProfileStatus  @default(not_started) @map("profile_status")
+  profileQuality           ProfileQuality @default(unknown) @map("profile_quality")
+  profileLastUpdatedAt     DateTime?      @map("profile_last_updated_at")
+
+  topContactEmail          String?        @map("top_contact_email")
+  topContactPhone          String?        @map("top_contact_phone")
+
+  note                     String?
+  createdAt                DateTime       @default(now()) @map("created_at")
+  updatedAt                DateTime       @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, companyId])
+  @@index([userId, poolStatus])
+  @@index([userId, matchLevel])
+  @@index([userId, profileStatus])
+  @@index([lastSeenAt])
+  @@map("customer_pool_items")
+}
+
+// ============================================================
+// company_profiles
+// ============================================================
+
+model CompanyProfile {
+  id                     String         @id @default(uuid()) @db.Uuid
+  companyId              String         @unique @map("company_id") @db.Uuid
+
+  rootDomain             String?        @map("root_domain")
+  profileStatus          ProfileStatus  @default(not_started) @map("profile_status")
+  profileQuality         ProfileQuality @default(unknown) @map("profile_quality")
+  profileRunId           String?        @map("profile_run_id")
+  profileVersion         Int?           @map("profile_version")
+  profileFirstBuiltAt    DateTime?      @map("profile_first_built_at")
+  profileLastUpdatedAt   DateTime?      @map("profile_last_updated_at")
+
+  emailBest              String?        @map("email_best")
+  emailAlt               String?        @map("email_alt")
+  phoneBest              String?        @map("phone_best")
+  phoneAlt               String?        @map("phone_alt")
+  contactPageUrl         String?        @map("contact_page_url")
+  contactFormUrl         String?        @map("contact_form_url")
+  linkedinCompanyUrl     String?        @map("linkedin_company_url")
+
+  country                String?
+  stateRegion            String?        @map("state_region")
+  city                   String?
+  addressRaw             String?        @map("address_raw")
+  foundedYear            String?        @map("founded_year")
+
+  businessModel          String?        @map("business_model")
+  companyRole            String?        @map("company_role")
+  buyerFit               String?        @map("buyer_fit")
+  buyerFitReason         String?        @map("buyer_fit_reason")
+
+  productCategories      String?        @map("product_categories")
+  coreProducts           String?        @map("core_products")
+  targetMarkets          String?        @map("target_markets")
+  industryFocus          String?        @map("industry_focus")
+
+  importSignal           String?        @map("import_signal")
+  oemOdmSignal           String?        @map("oem_odm_signal")
+  privateLabelSignal     String?        @map("private_label_signal")
+  vendorOnboardingSignal String?        @map("vendor_onboarding_signal")
+  moqSampleSignal        String?        @map("moq_sample_signal")
+  procurementSignalNotes String?        @map("procurement_signal_notes")
+
+  employeeRange          String?        @map("employee_range")
+  revenueRange           String?        @map("revenue_range")
+  facilitySignal         String?        @map("facility_signal")
+  certifications         String?
+
+  evidenceUrls           Json?          @map("evidence_urls")
+  evidenceNotes          String?        @map("evidence_notes")
+  pagesVisitedCount      Int?           @map("pages_visited_count")
+
+  rawProfileJson         Json?          @map("raw_profile_json")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([profileStatus])
+  @@index([profileQuality])
+  @@map("company_profiles")
+}
+
+// ============================================================
+// company_profile_requests
+// ============================================================
+
+model CompanyProfileRequest {
+  id           String               @id @default(uuid()) @db.Uuid
+  companyId    String               @map("company_id") @db.Uuid
+  requestedBy  String               @map("requested_by") @db.Uuid
+
+  status       ProfileRequestStatus @default(queued)
+  claimedBy    String?              @map("claimed_by")
+  requestedAt  DateTime             @default(now()) @map("requested_at")
+  claimedAt    DateTime?            @map("claimed_at")
+  startedAt    DateTime?            @map("started_at")
+  finishedAt   DateTime?            @map("finished_at")
+
+  runId        String?              @map("run_id")
+  errorSummary String?              @map("error_summary")
+  resultSummary String?             @map("result_summary")
+
+  company   Company @relation(fields: [companyId], references: [id])
+  requester User    @relation(fields: [requestedBy], references: [id])
+
+  @@index([companyId, status])
+  @@index([status, requestedAt])
+  @@map("company_profile_requests")
+}
