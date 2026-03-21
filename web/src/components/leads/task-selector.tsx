@@ -40,7 +40,7 @@ export function TaskSelector({
   const selected = tasks.find((t) => t.id === selectedId);
 
   return (
-    <Select value={selectedId ?? undefined} onValueChange={onSelect}>
+    <Select value={selectedId ?? undefined} onValueChange={(v) => { if (v) onSelect(v); }}>
       <SelectTrigger className="w-72">
         <SelectValue placeholder="选择任务">
           {selected ? (
