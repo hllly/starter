@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Interactive job management CLI."""
 
+from __future__ import annotations
+
 import sys
 import json
 import api

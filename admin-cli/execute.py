@@ -12,6 +12,8 @@ Cold-start (bootstrap) flow:
   Reads new outputs: platform_results.json, company_candidates.tsv
 """
 
+from __future__ import annotations
+
 import csv
 import json
 import os

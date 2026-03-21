@@ -12,6 +12,8 @@ Usage:
   python run.py <job_id> --tsv <path>        # Load from TSV file
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 import json

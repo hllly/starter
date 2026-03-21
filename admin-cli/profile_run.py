@@ -15,6 +15,8 @@ Workflow integration:
   After the run, it re-reads company_profile.tsv to get the new data.
 """
 
+from __future__ import annotations
+
 import argparse
 import csv
 import os
